@@ -5,7 +5,7 @@ use std::{
     io::{prelude::*, BufReader, BufWriter},
     net::SocketAddr,
     net::{TcpListener, TcpStream},
-    path::PathBuf,
+    path::{PathBuf, Path},
     str::from_utf8,
 };
 
@@ -25,6 +25,9 @@ impl KvsServer {
         addr: SocketAddr,
         logger: slog::Logger,
     ) -> Result<Self> {
+        let path = path.into();
+        info!(logger, "FileDir : {:?}", path);
+        
         let store = engine.open(path)?;
         write_engine_to_dir(&engine)?;
 
@@ -32,7 +35,6 @@ impl KvsServer {
         info!(logger, "Version : {}", env!("CARGO_PKG_VERSION"));
         info!(logger, "IP-PORT : {}", addr);
         info!(logger, "Engine  : {:?}", engine);
-        // info!(logger, "FileDir : {:?}", path.into());
 
         Ok(KvsServer {
             store,
