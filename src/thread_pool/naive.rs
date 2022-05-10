@@ -1,6 +1,9 @@
+use std::thread;
+
 use crate::thread_pool::ThreadPool;
 
 /// NaiveThreadPool
+#[derive(Debug)]
 pub struct NaiveThreadPool {}
 
 impl ThreadPool for NaiveThreadPool {
@@ -8,13 +11,13 @@ impl ThreadPool for NaiveThreadPool {
     where
         Self: Sized,
     {
-        unimplemented!()
+        Ok(Self {})
     }
 
-    fn spawn<F>(&self, _job: F)
+    fn spawn<F>(&self, job: F)
     where
         F: FnOnce() + Send + 'static,
     {
-        unimplemented!()
+        thread::spawn(job);
     }
 }
