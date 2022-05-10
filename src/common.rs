@@ -1,26 +1,20 @@
 use serde::{Deserialize, Serialize};
-
+/// Protocol for client-server request
 #[derive(Debug, Serialize, Deserialize)]
-pub enum Request {
-    Get { key: String },
-    Set { key: String, value: String },
-    Remove { key: String },
+pub struct Request {
+    /// Command
+    pub cmd: String,
+    /// Key
+    pub key: String,
+    /// Value
+    pub value: Option<String>,
 }
 
+/// Protocol for client-server response
 #[derive(Debug, Serialize, Deserialize)]
-pub enum GetResponse {
-    Ok(Option<String>),
-    Err(String),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum SetResponse {
-    Ok(()),
-    Err(String),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum RemoveResponse {
-    Ok(()),
-    Err(String),
+pub struct Response {
+    /// Status
+    pub status: String,
+    /// Result
+    pub result: Option<String>,
 }

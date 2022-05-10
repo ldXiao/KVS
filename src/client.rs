@@ -1,57 +1,85 @@
-use crate::common::{GetResponse, RemoveResponse, Request, SetResponse};
-use crate::{KvsError, Result};
-use serde::Deserialize;
-use serde_json::de::{Deserializer, IoRead};
-use std::io::{BufReader, BufWriter, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use crate::*;
+use std::{
+    io::{BufRead, BufReader, BufWriter, Write},
+    net::{SocketAddr, TcpStream},
+    process::exit,
+    str::from_utf8,
+};
 
-/// Key value store client
+/// Kvs Cilent
 pub struct KvsClient {
-    reader: Deserializer<IoRead<BufReader<TcpStream>>>,
-    writer: BufWriter<TcpStream>,
+    stream: TcpStream,
 }
 
 impl KvsClient {
-    /// Connect to `addr` to access `KvsServer`.
-    pub fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
-        let tcp_reader = TcpStream::connect(addr)?;
-        let tcp_writer = tcp_reader.try_clone()?;
-        Ok(KvsClient {
-            reader: Deserializer::from_reader(BufReader::new(tcp_reader)),
-            writer: BufWriter::new(tcp_writer),
-        })
+    /// Return a kvs client at given addr
+    pub fn new(addr: SocketAddr) -> Self {
+        let stream = TcpStream::connect(addr).unwrap();
+        Self { stream }
     }
-
-    /// Get the value of a given key from the server.
-    pub fn get(&mut self, key: String) -> Result<Option<String>> {
-        serde_json::to_writer(&mut self.writer, &Request::Get { key })?;
-        self.writer.flush()?;
-        let resp = GetResponse::deserialize(&mut self.reader)?;
-        match resp {
-            GetResponse::Ok(value) => Ok(value),
-            GetResponse::Err(msg) => Err(KvsError::StringError(msg)),
-        }
-    }
-
-    /// Set the value of a string key in the server.
+    /// Set
     pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        serde_json::to_writer(&mut self.writer, &Request::Set { key, value })?;
-        self.writer.flush()?;
-        let resp = SetResponse::deserialize(&mut self.reader)?;
-        match resp {
-            SetResponse::Ok(_) => Ok(()),
-            SetResponse::Err(msg) => Err(KvsError::StringError(msg)),
+        let request = Request {
+            cmd: "Set".to_string(),
+            key,
+            value: Some(value),
+        };
+        let response = self.send_request(request)?;
+        match response.status.as_str() {
+            "err" => {
+                eprintln!("{}", response.result.unwrap());
+                exit(1);
+            }
+            _ => Ok(()),
         }
     }
-
-    /// Remove a string key in the server.
-    pub fn remove(&mut self, key: String) -> Result<()> {
-        serde_json::to_writer(&mut self.writer, &Request::Remove { key })?;
-        self.writer.flush()?;
-        let resp = RemoveResponse::deserialize(&mut self.reader)?;
-        match resp {
-            RemoveResponse::Ok(_) => Ok(()),
-            RemoveResponse::Err(msg) => Err(KvsError::StringError(msg)),
+    /// Get
+    pub fn get(&mut self, key: String) -> Result<()> {
+        let request = Request {
+            cmd: "Get".to_string(),
+            key,
+            value: None,
+        };
+        let response = self.send_request(request)?;
+        match response.status.as_str() {
+            "ok" => {
+                println!("{}", response.result.unwrap());
+                Ok(())
+            }
+            "err" => {
+                eprintln!("{}", response.result.unwrap());
+                exit(1);
+            }
+            _ => Ok(()),
         }
+    }
+    /// Remove
+    pub fn remove(&mut self, key: String) -> Result<()> {
+        let request = Request {
+            cmd: "Remove".to_string(),
+            key,
+            value: None,
+        };
+        let response = self.send_request(request)?;
+        match response.status.as_str() {
+            "err" => {
+                eprintln!("{}", response.result.unwrap());
+                exit(1);
+            }
+            _ => Ok(()),
+        }
+    }
+    fn send_request(&mut self, request: Request) -> Result<Response> {
+        let mut reader = BufReader::new(&self.stream);
+        let mut writer = BufWriter::new(&self.stream);
+
+        let buf = serde_json::to_string(&request)?;
+        writer.write(buf.as_bytes())?;
+        writer.flush()?;
+
+        let mut buf = vec![];
+        reader.read_until(b'}', &mut buf)?;
+        let response: Response = serde_json::from_str(from_utf8(&buf).unwrap())?;
+        Ok(response)
     }
 }
