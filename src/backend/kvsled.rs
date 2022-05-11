@@ -16,10 +16,8 @@ impl KvSled {
     }
 }
 
-impl KvsBackend for KvSled {}
-
 impl KvsEngine for KvSled {
-    fn set(&mut self, key: String, value: String) -> Result<()> {
+    fn set(&self, key: String, value: String) -> Result<()> {
         match self.db.insert(key.as_bytes(), value.as_bytes()) {
             Ok(_) => {
                 self.db.flush().unwrap();
@@ -29,7 +27,7 @@ impl KvsEngine for KvSled {
         }
     }
 
-    fn get(&mut self, key: String) -> Result<Option<String>> {
+    fn get(&self, key: String) -> Result<Option<String>> {
         match self.db.get(key.as_bytes()) {
             Ok(Some(value)) => Ok(Some(
                 from_utf8(value.to_vec().as_ref()).unwrap().to_string(),
@@ -39,7 +37,7 @@ impl KvsEngine for KvSled {
         }
     }
 
-    fn remove(&mut self, key: String) -> Result<()> {
+    fn remove(&self, key: String) -> Result<()> {
         match self.db.remove(key) {
             Ok(Some(_)) => {
                 self.db.flush().unwrap();

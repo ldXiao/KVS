@@ -1,10 +1,5 @@
 use crate::Result;
-pub use naive::NaiveThreadPool;
-pub use self::rayon::RayonThreadPool;
-pub use shared_queue::SharedQueueThreadPool;
-mod naive;
-mod rayon;
-mod shared_queue;
+
 /// The ThreadPool contain new and spawn functions
 pub trait ThreadPool {
     /// Creates a new thread pool, immediately spawning the specified number of threads.
@@ -20,5 +15,10 @@ pub trait ThreadPool {
         F: FnOnce() + Send + 'static;
 }
 
+mod naive;
+mod rayon;
+mod shared_queue;
 
-
+pub use naive::NaiveThreadPool;
+pub use self::rayon::RayonThreadPool;
+pub use shared_queue::SharedQueueThreadPool;
