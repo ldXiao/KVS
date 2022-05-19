@@ -1,9 +1,12 @@
 [package]
-name = "plan"
+name = "kvs"
 version = "0.1.0"
 authors = ["Lind Xiao <xld704@gmail.com>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+clap = "2.32.0"
+
+[dev-dependencies]
+assert_cmd = "0.11.0"
+predicates = "1.0.0"

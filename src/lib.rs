@@ -1,7 +1,6 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+#![deny(missing_docs)]
+//! A simple key/value store.
+
+pub use kv::KvStore;
+
+mod kv;
