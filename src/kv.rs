@@ -1,46 +1,47 @@
 use std::collections::HashMap;
 
-/// The `KvStore` stores string key/value pairs.
-///
-/// Key/value pairs are stored in a `HashMap` in memory and not persisted to disk.
-///
-/// Example:
-///
+/// KvStore is a struct that store Key Value pairs
+/// /// Example:
 /// ```rust
-/// # use kvs::KvStore;
+/// use kvs::KvStore;
 /// let mut store = KvStore::new();
 /// store.set("key".to_owned(), "value".to_owned());
 /// let val = store.get("key".to_owned());
 /// assert_eq!(val, Some("value".to_owned()));
 /// ```
-#[derive(Default)]
+#[derive(Debug)]
 pub struct KvStore {
     map: HashMap<String, String>,
 }
 
 impl KvStore {
-    /// Creates a `KvStore`.
+    /// Return a new instance of KvStore
     pub fn new() -> KvStore {
         KvStore {
             map: HashMap::new(),
         }
     }
 
-    /// Sets the value of a string key to a string.
+    /// Given a `String` key, return the `String` value of the key.
     ///
-    /// If the key already exists, the previous value will be overwritten.
+    /// if key not in KvStore, return None.
+    pub fn get(&mut self, key: String) -> Option<String> {
+        self.map.get(&key).cloned()
+    }
+
+    /// Given a `String` key and a `String` value, store the `String` value in the KvStore.
+    /// if key already in KvStore, override it.
+    ///
+    /// Return None if the key was not in the KvStore.
+    /// Return the previously value at the key if the key was previously in the KvStore.
     pub fn set(&mut self, key: String, value: String) {
         self.map.insert(key, value);
     }
 
-    /// Gets the string value of a given string key.
+    /// Given a `String` key , remove the `String` key in the KvStore.
     ///
-    /// Returns `None` if the given key does not exist.
-    pub fn get(&self, key: String) -> Option<String> {
-        self.map.get(&key).cloned()
-    }
-
-    /// Remove a given key.
+    /// Return the value at the key if the key was previously in the KvStore.
+    /// Reruen None if the key was not in the KvStore.
     pub fn remove(&mut self, key: String) {
         self.map.remove(&key);
     }
