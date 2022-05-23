@@ -15,7 +15,7 @@ use std::{
 };
 use std::{fs::File, io::BufReader, path::PathBuf};
 
-const COMPACTION_THRESHOLD: u64 = 1024 * 1024;
+const COMPACTION_THRESHOLD: u64 = 2 * 2;
 
 /// KvStore is a struct that store Key Value pairs
 /// /// Example:
