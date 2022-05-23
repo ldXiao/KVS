@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Deserializer;
 use std::{
     collections::{BTreeMap, HashMap},
-    ffi::OsStr,
     fs,
     fs::OpenOptions,
     io,
@@ -11,11 +10,11 @@ use std::{
     io::SeekFrom,
     io::{Read, Seek, Write},
     ops::Range,
-    path::Path,
+    path::Path, ffi::OsStr,
 };
 use std::{fs::File, io::BufReader, path::PathBuf};
 
-const COMPACTION_THRESHOLD: u64 = 2 * 2;
+const COMPACTION_THRESHOLD: u64 = 512 * 512;
 
 /// KvStore is a struct that store Key Value pairs
 /// /// Example:
@@ -202,17 +201,27 @@ impl KvStore {
 }
 
 fn read_all_logs(path: &Path) -> Result<Vec<u64>> {
-    let mut gen_list: Vec<u64> = fs::read_dir(&path)?
-        .flat_map(|res| -> Result<_> { Ok(res?.path()) })
-        .filter(|path| path.is_file() && path.extension() == Some("log".as_ref()))
-        .flat_map(|path| {
-            path.file_name()
-                .and_then(OsStr::to_str)
-                .map(|s| s.trim_end_matches(".log"))
-                .map(str::parse::<u64>)
-        })
-        .flatten()
-        .collect();
+    // let mut gen_list: Vec<u64> = fs::read_dir(&path)?
+    //     .flat_map(|res| -> Result<_> { Ok(res?.path()) })
+    //     .filter(|path| path.is_file() && path.extension() == Some("log".as_ref()))
+    //     .flat_map(|path| {
+    //         path.file_name()
+    //             .and_then(OsStr::to_str)
+    //             .map(|s| s.trim_end_matches(".log"))
+    //             .map(str::parse::<u64>)
+    //     })
+    //     .flatten()
+    //     .collect();
+    let paths = fs::read_dir(path)?;
+    let mut gen_list = Vec::new();
+    for p in paths {
+        let p = p?.path();
+        if p.is_file() && p.extension() == Some(OsStr::new("log")) {
+            let p = p.file_name().unwrap().to_str().unwrap();
+            let gen = p.trim_end_matches(".log").parse::<u64>().unwrap();
+            gen_list.push(gen);
+        }
+    }
     gen_list.sort_unstable();
     Ok(gen_list)
 }
