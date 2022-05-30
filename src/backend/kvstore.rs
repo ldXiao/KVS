@@ -43,7 +43,7 @@ impl KvsBackend for KvStore {
 
 impl KvStore {
     /// Open the KvStore at a given path. Return the KvStore.
-    pub fn open(path: impl Into<PathBuf>) -> Result<impl KvsEngine> {
+    pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
         let path = path.into();
         fs::create_dir_all(&path)?;
 
