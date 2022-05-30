@@ -1,4 +1,4 @@
-use crate::{KvError, KvsEngine, Result};
+use crate::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Deserializer;
 use std::{
@@ -26,6 +26,19 @@ pub struct KvStore {
     writer: BufWriterWithPos<File>,
     index: BTreeMap<String, CommandPos>,
     uncompacted: u64,
+}
+
+impl Clone for KvStore {
+    fn clone(& self) -> Self
+    where
+        Self: Sized,
+        {
+            todo!()
+        }
+}
+
+impl KvsBackend for KvStore {
+    
 }
 
 impl KvStore {
