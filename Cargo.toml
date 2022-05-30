@@ -2,7 +2,7 @@
 name = "kvs"
 version = "0.1.0"
 authors = ["Lind Xiao"]
-edition = "2021"
+edition = "2018"
 description = "A key-value store"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,6 +17,8 @@ slog = "2.5.2"
 slog-term = "2.6.0"
 slog-async = "2.5.0"
 sled = "0.34.6"
+crossbeam-utils = "0.6.5"
+panic-control = "0.1.4"
 
 [dev-dependencies]
 assert_cmd = "0.11"
