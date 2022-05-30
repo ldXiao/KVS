@@ -1,70 +1,141 @@
-use crate::common::{GetResponse, RemoveResponse, Request, SetResponse};
-use crate::{KvsEngine, Result};
-use log::{debug, error};
-use serde_json::Deserializer;
-use std::io::{BufReader, BufWriter, Write};
-use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use crate::*;
+use std::{
+    fs,
+    io::Write,
+    io::{prelude::*, BufReader, BufWriter},
+    net::SocketAddr,
+    net::{TcpListener, TcpStream},
+    path::PathBuf,
+    str::from_utf8,
+};
 
-/// The server of a key value store.
-pub struct KvsServer<E: KvsEngine> {
-    engine: E,
+/// Kvs Server
+pub struct KvsServer {
+    store: Box<dyn KvsEngine>,
+    addr: SocketAddr,
+    logger: slog::Logger,
 }
 
-impl<E: KvsEngine> KvsServer<E> {
-    /// Create a `KvsServer` with a given storage engine.
-    pub fn new(engine: E) -> Self {
-        KvsServer { engine }
-    }
+impl KvsServer {
+    /// Construct a new Kvs Server
+    pub fn new(
+        engine: Engine,
+        path: impl Into<PathBuf>,
+        addr: SocketAddr,
+        logger: slog::Logger,
+    ) -> Result<Self> {
+        let store = engine.open(path)?;
+        write_engine_to_dir(&engine)?;
 
-    /// Run the server listening on the given address
-    pub fn run<A: ToSocketAddrs>(mut self, addr: A) -> Result<()> {
-        let listener = TcpListener::bind(addr)?;
+        info!(logger, "Key Value Store Server");
+        info!(logger, "Version : {}", env!("CARGO_PKG_VERSION"));
+        info!(logger, "IP-PORT : {}", addr);
+        info!(logger, "Engine  : {:?}", engine);
+        // info!(logger, "FileDir : {:?}", path.into());
+
+        Ok(KvsServer {
+            store,
+            addr,
+            logger,
+        })
+    }
+    /// Run Kvs Server at given Addr
+    pub fn run(&mut self) -> Result<()> {
+        let listener = TcpListener::bind(self.addr)?;
+
+        info!(self.logger, "Listening on {}", self.addr);
+
+        // accept connections and process them serially
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    if let Err(e) = self.serve(stream) {
-                        error!("Error on serving client: {}", e);
-                    }
+                    self.handle_request(stream)?;
                 }
-                Err(e) => error!("Connection failed: {}", e),
+                Err(e) => println!("{}", e),
             }
         }
         Ok(())
     }
 
-    fn serve(&mut self, tcp: TcpStream) -> Result<()> {
-        let peer_addr = tcp.peer_addr()?;
-        let reader = BufReader::new(&tcp);
-        let mut writer = BufWriter::new(&tcp);
-        let req_reader = Deserializer::from_reader(reader).into_iter::<Request>();
+    fn handle_request(&mut self, stream: TcpStream) -> Result<()> {
+        let mut reader = BufReader::new(&stream);
+        let mut writer = BufWriter::new(&stream);
 
-        macro_rules! send_resp {
-            ($resp:expr) => {{
-                let resp = $resp;
-                serde_json::to_writer(&mut writer, &resp)?;
-                writer.flush()?;
-                debug!("Response sent to {}: {:?}", peer_addr, resp);
-            };};
-        }
+        let mut buf = vec![];
+        let _len = reader.read_until(b'}', &mut buf)?;
+        let request_str = from_utf8(&buf).unwrap();
 
-        for req in req_reader {
-            let req = req?;
-            debug!("Receive request from {}: {:?}", peer_addr, req);
-            match req {
-                Request::Get { key } => send_resp!(match self.engine.get(key) {
-                    Ok(value) => GetResponse::Ok(value),
-                    Err(e) => GetResponse::Err(format!("{}", e)),
-                }),
-                Request::Set { key, value } => send_resp!(match self.engine.set(key, value) {
-                    Ok(_) => SetResponse::Ok(()),
-                    Err(e) => SetResponse::Err(format!("{}", e)),
-                }),
-                Request::Remove { key } => send_resp!(match self.engine.remove(key) {
-                    Ok(_) => RemoveResponse::Ok(()),
-                    Err(e) => RemoveResponse::Err(format!("{}", e)),
-                }),
-            };
-        }
+        let request: Request = serde_json::from_str(request_str)?;
+        let response = self.process_request(request);
+
+        let response_str = serde_json::to_string(&response)?;
+        writer.write(&response_str.as_bytes())?;
+        writer.flush()?;
+
+        info!(
+            self.logger,
+            "Received request from {} - Args: {}, Response: {}",
+            stream.local_addr()?,
+            request_str,
+            response_str
+        );
+
         Ok(())
     }
+
+    fn process_request(&mut self, req: Request) -> Response {
+        match req.cmd.as_str() {
+            "Get" => match self.store.get(req.key) {
+                Ok(Some(value)) => Response {
+                    status: "ok".to_string(),
+                    result: Some(value),
+                },
+                Ok(None) => Response {
+                    status: "ok".to_string(),
+                    result: Some("Key not found".to_string()),
+                },
+                Err(_) => Response {
+                    status: "err".to_string(),
+                    result: Some("Something Wrong!".to_string()),
+                },
+            },
+            "Set" => match self.store.set(req.key, req.value.unwrap()) {
+                Ok(_) => Response {
+                    status: "ok".to_string(),
+                    result: None,
+                },
+                Err(_) => Response {
+                    status: "err".to_string(),
+                    result: Some("Set Error!".to_string()),
+                },
+            },
+            "Remove" => match self.store.remove(req.key) {
+                Ok(_) => Response {
+                    status: "ok".to_string(),
+                    result: None,
+                },
+                Err(_) => Response {
+                    status: "err".to_string(),
+                    result: Some("Key not found".to_string()),
+                },
+            },
+            _ => Response {
+                status: "err".to_string(),
+                result: Some("Unknown Command!".to_string()),
+            },
+        }
+    }
+}
+
+fn write_engine_to_dir(engine: &Engine) -> Result<()> {
+    let mut engine_tag_file = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(ENGINE_TAG_FILE)?;
+    match engine {
+        Engine::kvs => engine_tag_file.write(b"kvs")?,
+        Engine::sled => engine_tag_file.write(b"sled")?,
+    };
+    engine_tag_file.flush()?;
+    Ok(())
 }
