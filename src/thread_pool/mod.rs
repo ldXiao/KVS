@@ -1,6 +1,6 @@
 use crate::Result;
 pub use naive::NaiveThreadPool;
-pub use rayon::RayonThreadPool;
+pub use self::rayon::RayonThreadPool;
 pub use shared_queue::SharedQueueThreadPool;
 mod naive;
 mod rayon;
