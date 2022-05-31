@@ -40,9 +40,10 @@ fn random_string_with_length(rng: &mut StdRng, len: usize) -> Vec<String> {
     ret
 }
 
-pub fn write_bench(c: &mut Criterion) {
+pub fn engine_write_bench(c: &mut Criterion) {
+    let mut group = c.benchmark_group("engine_write");
     let para = Para::new("kvs".to_string(), 100);
-    c.bench_with_input(BenchmarkId::new("write_bench", &para), &para, |b, s| {
+    group.bench_with_input(BenchmarkId::new("kvs", &para), &para, |b, s| {
         b.iter_batched(
             || {
                 let temp_dir = TempDir::new().unwrap();
@@ -60,7 +61,7 @@ pub fn write_bench(c: &mut Criterion) {
         );
     });
     let para = Para::new("sled".to_string(), 100);
-    c.bench_with_input(BenchmarkId::new("write_bench", &para), &para, |b, s| {
+    group.bench_with_input(BenchmarkId::new("sled", &para), &para, |b, s| {
         b.iter_batched(
             || {
                 let temp_dir = TempDir::new().unwrap();
@@ -77,11 +78,13 @@ pub fn write_bench(c: &mut Criterion) {
             BatchSize::SmallInput,
         );
     });
+    group.finish();
 }
 
-pub fn get_bench(c: &mut Criterion) {
+pub fn engine_get_bench(c: &mut Criterion) {
+    let mut group = c.benchmark_group("engine_get");
     let para = Para::new("kvs".to_string(), 1000);
-    c.bench_with_input(BenchmarkId::new("get_bench", &para), &para, |b, s| {
+    group.bench_with_input(BenchmarkId::new("kvs", &para), &para, |b, s| {
         b.iter_batched(
             || {
                 let temp_dir = TempDir::new().unwrap();
@@ -102,7 +105,7 @@ pub fn get_bench(c: &mut Criterion) {
         );
     });
     let para = Para::new("sled".to_string(), 1000);
-    c.bench_with_input(BenchmarkId::new("get_bench", &para), &para, |b, s| {
+    group.bench_with_input(BenchmarkId::new("sled", &para), &para, |b, s| {
         b.iter_batched(
             || {
                 let temp_dir = TempDir::new().unwrap();
@@ -122,7 +125,8 @@ pub fn get_bench(c: &mut Criterion) {
             BatchSize::SmallInput,
         );
     });
+    group.finish();
 }
 
-criterion_group!(benches, write_bench, get_bench);
+criterion_group!(benches, engine_write_bench, engine_get_bench);
 criterion_main!(benches);
