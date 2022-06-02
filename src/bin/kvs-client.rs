@@ -1,10 +1,18 @@
 use kvs::preclude::*;
 use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, process::exit};
+use std::{io::BufRead, net::SocketAddr, process::exit};
 use structopt::StructOpt;
 
-const DEFAULT_ADDR: &str = "127.0.0.1:4000";
+#[macro_use]
+extern crate lazy_static;
 
+lazy_static! {
+    static ref DEFAULT_ADDRS: Vec<SocketAddr> = vec![
+        "127.0.0.1:5001".parse().unwrap(),
+        "127.0.0.1:5002".parse().unwrap(),
+        "127.0.0.1:5003".parse().unwrap()
+    ];
+}
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = env!("CARGO_PKG_NAME"), 
@@ -13,7 +21,7 @@ const DEFAULT_ADDR: &str = "127.0.0.1:4000";
     author = env!("CARGO_PKG_AUTHORS")
 )]
 struct Opt {
-    #[structopt(subcommand)] // Note that we mark a field as a subcommand
+    #[structopt(flatten)] // Note that we mark a field as a subcommand
     cmd: Command,
 }
 
@@ -27,9 +35,10 @@ enum Command {
             name = "IP-PORT",
             short = "a",
             long = "addr",
-            default_value = DEFAULT_ADDR
+            // default_value = DEFAULT_ADDR,
+            // parse(try_from_str = parse_str_to_vec)
         )]
-        addr: SocketAddr,
+        addrs: Vec<SocketAddr>,
     },
     #[structopt(about = "Set the value of a string key to a string")]
     Set {
@@ -41,9 +50,10 @@ enum Command {
             name = "IP-PORT",
             short = "a",
             long = "addr",
-            default_value = DEFAULT_ADDR
+            // default_value = DEFAULT_ADDR,
+            // parse(try_from_str = parse_str_to_vec)
         )]
-        addr: SocketAddr,
+        addrs: Vec<SocketAddr>,
     },
     #[structopt(about = "Remove a given key")]
     Rm {
@@ -53,55 +63,169 @@ enum Command {
             name = "IP-PORT",
             short = "a",
             long = "addr",
-            default_value = DEFAULT_ADDR
+            // default_value = DEFAULT_ADDR,
+            // parse(try_from_str = parse_str_to_vec)
         )]
-        addr: SocketAddr,
+        addrs: Vec<SocketAddr>,
+    },
+    #[structopt(about = "Start a transaction")]
+    Txn {
+        #[structopt(
+            name = "IP-PORT",
+            short = "a",
+            long = "addr",
+            // default_value = DEFAULT_ADDR,
+            // parse(try_from_str = parse_str_to_vec)
+        )]
+        addrs: Vec<SocketAddr>,
     },
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let opt: Opt = Opt::from_args();
+    // println!("{:?}", opt);
+
     match opt.cmd {
-        Command::Get { key, addr } => {
-            let addr = format!("{}{}", "http://", addr.to_string());
-            let mut client = KvRpcClient::connect(addr).await.unwrap();
-            let request = tonic::Request::new(GetRequest { key });
-            let response = client.get(request).await;
-            match response {
-                Ok(result) => println!("{}", result.into_inner().message),
+        Command::Get { key, mut addrs } => {
+            if addrs.is_empty() {
+                addrs = (*DEFAULT_ADDRS).to_owned();
+            }
+            let mut client = KvsClient::builder().add_batch_nodes(addrs).build();
+            match client.get(key).await {
+                Ok(value) => println!("{}", value),
+                Err(KvError::KeyNotFound) => println!("Key not found"),
                 Err(e) => {
                     eprintln!("{}", e);
                     exit(1);
                 }
             }
         }
-        Command::Set { key, value, addr } => {
-            let addr = format!("{}{}", "http://", addr.to_string());
-            let mut client = KvRpcClient::connect(addr).await.unwrap();
-            let request = tonic::Request::new(SetRequest { key, value });
-            let response = client.set(request).await;
-            match response {
-                Ok(_result) => {}
+        Command::Set {
+            key,
+            value,
+            mut addrs,
+        } => {
+            if addrs.is_empty() {
+                addrs = (*DEFAULT_ADDRS).to_owned();
+            }
+            let mut client = KvsClient::builder().add_batch_nodes(addrs).build();
+            match client.set(key, value).await {
+                Ok(_) => {}
                 Err(e) => {
                     eprintln!("{}", e);
                     exit(1);
                 }
             }
         }
-        Command::Rm { key, addr } => {
-            let addr = format!("{}{}", "http://", addr.to_string());
-            let mut client = KvRpcClient::connect(addr).await.unwrap();
-            let request = tonic::Request::new(RemoveRequest { key });
-            let response = client.remove(request).await;
-            match response {
-                Ok(_result) => {}
+        Command::Rm { key, mut addrs } => {
+            if addrs.is_empty() {
+                addrs = (*DEFAULT_ADDRS).to_owned();
+            }
+            let mut client = KvsClient::builder().add_batch_nodes(addrs).build();
+            match client.remove(key).await {
+                Ok(()) => {}
                 Err(e) => {
                     eprintln!("{}", e);
                     exit(1);
                 }
+            }
+        }
+        Command::Txn { addrs } => {
+            let mut client = KvsClient::builder().add_batch_nodes(addrs).build();
+
+            let stdin = std::io::stdin();
+            let mut handle = stdin.lock();
+
+            loop {
+                let mut input = String::new();
+                if handle.read_line(&mut input)? == 0 {
+                    break;
+                }
+                let args: Vec<&str> = input.split_ascii_whitespace().collect();
+                match parse_txn_args(args) {
+                    TxnArgs::Begin => match client.txn_start().await {
+                        Ok(_) => println!("Transaction Started"),
+                        Err(_) => println!("Error in starting transaction! Please try again"),
+                    },
+                    TxnArgs::Get(k) => {
+                        if !client.txn_is_started() {
+                            println!("No active transaction detected! Use `begin` first");
+                            continue;
+                        }
+                        match client.txn_get(k).await {
+                            Ok(value) => println!("{}", value),
+                            Err(e) => println!("Error: {}", e),
+                        }
+                    }
+                    TxnArgs::Remove(k) => {
+                        if !client.txn_is_started() {
+                            println!("No active transaction detected! Use `begin` first");
+                            continue;
+                        }
+                        client.txn_delete(k)?;
+                    }
+                    TxnArgs::Set(k, v) => {
+                        if !client.txn_is_started() {
+                            println!("No active transaction detected! Use `begin` first");
+                            continue;
+                        }
+                        client.txn_set(k, v)?;
+                    }
+                    TxnArgs::Commit => {
+                        if !client.txn_is_started() {
+                            println!("No active transaction detected! Use `begin` first!");
+                            continue;
+                        }
+                        match client.txn_commit().await {
+                            Ok(()) => println!("Transaction Success"),
+                            Err(e) => println!("Transaction Failed. Error: {}", e),
+                        }
+                    }
+                    TxnArgs::Exit => {
+                        exit(0);
+                    }
+                    TxnArgs::Unknown => {
+                        // exit(1);
+                    }
+                };
             }
         }
     };
     Ok(())
+}
+
+enum TxnArgs {
+    Begin,
+    Get(String),
+    Remove(String),
+    Set(String, String),
+    Commit,
+    Exit,
+    Unknown,
+}
+
+fn parse_txn_args(args: Vec<&str>) -> TxnArgs {
+    if args.len() == 2 && args[0] == "get" {
+        TxnArgs::Get(args[1].to_string())
+    } else if args.len() == 2 && args[0] == "remove" {
+        TxnArgs::Remove(args[1].to_string())
+    } else if args.len() == 3 && args[0] == "set" {
+        TxnArgs::Set(args[1].to_string(), args[2].to_string())
+    } else if args.len() == 1 && args[0] == "commit" {
+        TxnArgs::Commit
+    } else if args.len() == 1 && args[0] == "begin" {
+        TxnArgs::Begin
+    } else if args.len() == 1 && args[0] == "exit" {
+        TxnArgs::Exit
+    } else {
+        eprintln!("Unknown args! Avaliale: begin get set commit exit");
+        eprintln!("    begin");
+        eprintln!("    get <key>");
+        eprintln!("    set <key> <value>");
+        eprintln!("    commit");
+        eprintln!("    exit");
+        TxnArgs::Unknown
+    }
 }
