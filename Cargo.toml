@@ -46,10 +46,3 @@ panic-control = "0.1.4"
 [build-dependencies]
 tonic-build = { version = "0.4", features = ["prost"] }
 
-[[bench]]
-name = "engine"
-harness = false
-
-[[bench]]
-name = "thread_pool"
-harness = false
