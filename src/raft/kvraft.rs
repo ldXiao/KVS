@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{percolator::TimestampOracle, rpc::kvs_service::*, KvRpcError, MultiStore};
+use crate::{percolator::TimestampDump, rpc::kvs_service::*, KvRpcError, MultiStore};
 use prost::Message;
 use tonic::{Request, Response, Status};
 
@@ -451,7 +451,7 @@ impl Stream for KvRaftInner {
 pub struct KvRaftNode {
     handle: Arc<Mutex<thread::JoinHandle<()>>>,
     sender: UnboundedSender<KvEvent>,
-    ts_oracle: TimestampOracle,
+    ts_dump: TimestampDump,
 }
 
 impl KvRaftNode {
@@ -463,7 +463,7 @@ impl KvRaftNode {
         persister: Arc<dyn persister::Persister>,
         maxraftstate: Option<usize>,
         apply_ch: UnboundedReceiver<ApplyMsg>,
-        ts_oracle: TimestampOracle,
+        ts_dump: TimestampDump,
     ) -> KvRaftNode {
         let (sender, receiver) = unbounded_channel();
         let mut kv_raft =
@@ -485,7 +485,7 @@ impl KvRaftNode {
         KvRaftNode {
             handle: Arc::new(Mutex::new(handle)),
             sender,
-            ts_oracle,
+            ts_dump,
         }
     }
 }
@@ -497,7 +497,7 @@ impl KvRpc for KvRaftNode {
         request: Request<TimeStampRequest>,
     ) -> std::result::Result<Response<TimeStampReply>, Status> {
         let name = request.into_inner().name;
-        let ts = self.ts_oracle.fetch_one().unwrap();
+        let ts = self.ts_dump.fetch_one().unwrap();
         let reply = TimeStampReply { name, ts };
         Ok(tonic::Response::new(reply))
     }

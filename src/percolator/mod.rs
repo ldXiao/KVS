@@ -1,7 +1,7 @@
 mod multi_store;
-mod tso;
+mod tsdump;
 mod types;
 
 pub use multi_store::MultiStore;
-pub use tso::TimestampOracle;
+pub use tsdump::TimestampDump;
 pub use types::{Column, DataValue, Key, LockValue, WriteValue};

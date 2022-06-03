@@ -23,7 +23,7 @@ pub use engine::{EngineKind, KvSled, KvStore, KvsEngine};
 pub use client::{KvsClient, KvsClientBuilder};
 pub use error::{KvError, KvRpcError, Result};
 pub use raft::{FilePersister, KvRaftNode, Persister, RaftNode};
-pub use percolator::{DataValue, Key, LockValue, MultiStore, TimestampOracle, WriteValue};
+pub use percolator::{DataValue, Key, LockValue, MultiStore, TimestampDump, WriteValue};
 pub use server::{KvsServer, KvsServerBuilder};
 
 /// preclude
@@ -32,7 +32,7 @@ pub mod preclude {
     pub use crate::client::{KvsClient, KvsClientBuilder};
     pub use crate::error::{KvError, Result};
     pub use crate::percolator::{
-        DataValue, Key, LockValue, MultiStore, TimestampOracle, WriteValue,
+        DataValue, Key, LockValue, MultiStore, TimestampDump, WriteValue,
     };
     pub use crate::raft::{FilePersister, KvRaftNode, Persister, RaftNode};
     #[allow(missing_docs)]

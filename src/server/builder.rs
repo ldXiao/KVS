@@ -96,7 +96,7 @@ impl KvsServerBuilder {
             .map(|node| Channel::from_shared(node).unwrap().connect_lazy().unwrap())
             .map(|res| RaftRpcClient::new(res))
             .collect();
-        let ts_oracle = TimestampOracle::open(self.root_path.clone()).unwrap();
+        let ts_dump = TimestampDump::open(self.root_path.clone()).unwrap();
         let nodes: Vec<(RaftNode, KvRaftNode, SocketAddr)> = self
             .info
             .iter()
@@ -112,7 +112,7 @@ impl KvsServerBuilder {
                     per,
                     Some(1024),
                     rx,
-                    ts_oracle.clone(),
+                    ts_dump.clone(),
                 );
                 (raft, kv_raft, info.addr)
             })
@@ -124,8 +124,8 @@ impl KvsServerBuilder {
         assert!(self.info.len() == 1);
         let info = self.info.first().unwrap();
         let store = MultiStore::new(info.path.clone(), self.store_kind.clone());
-        let ts_oracle = TimestampOracle::open(info.path.clone()).unwrap();
-        let server = KvsBasicServer::new(store, info.addr, ts_oracle).unwrap();
+        let ts_dump = TimestampDump::open(info.path.clone()).unwrap();
+        let server = KvsBasicServer::new(store, info.addr, ts_dump).unwrap();
         KvsServer::new(ServerKind::Basic(server))
     }
 }

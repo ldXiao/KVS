@@ -9,16 +9,16 @@ use std::{
     },
 };
 
-static DEFAULT_FILE_NAME: &'static str = ".tso";
+static DEFAULT_FILE_NAME: &'static str = ".tsdump";
 
 /// A TimestampOracle
 #[derive(Clone)]
-pub struct TimestampOracle {
+pub struct TimestampDump {
     inner: Arc<AtomicU64>,
     path: PathBuf,
 }
 
-impl TimestampOracle {
+impl TimestampDump {
     /// Open a new TimestampOracle in the given path
     pub fn open(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into().join(DEFAULT_FILE_NAME);
@@ -28,7 +28,7 @@ impl TimestampOracle {
             path,
         })
     }
-    /// fetch a timestamp from oracle
+    /// fetch a timestamp from dump
     pub fn fetch_one(&self) -> Result<u64> {
         let ts = self.inner.fetch_add(1, Ordering::SeqCst);
         backup(self.path.clone(), ts + 1)?;
@@ -37,15 +37,15 @@ impl TimestampOracle {
 }
 
 fn backup(path: PathBuf, ts: u64) -> Result<()> {
-    let mut tso_file = fs::OpenOptions::new().create(true).write(true).open(path)?;
-    tso_file.write(ts.to_string().as_bytes())?;
-    tso_file.flush()?;
+    let mut tsdump_file = fs::OpenOptions::new().create(true).write(true).open(path)?;
+    tsdump_file.write(ts.to_string().as_bytes())?;
+    tsdump_file.flush()?;
     Ok(())
 }
 fn restore(path: PathBuf) -> Result<u64> {
-    let mut tso_file = fs::OpenOptions::new().read(true).open(path)?;
+    let mut tsdump_file = fs::OpenOptions::new().read(true).open(path)?;
     let mut buf = String::new();
-    tso_file.read_to_string(&mut buf)?;
+    tsdump_file.read_to_string(&mut buf)?;
     let ts: u64 = buf.parse().unwrap_or(1);
     Ok(ts)
 }

@@ -1,5 +1,5 @@
 use crate::*;
-use crate::{percolator::TimestampOracle, rpc::kvs_service::*};
+use crate::{percolator::TimestampDump, rpc::kvs_service::*};
 use std::{net::SocketAddr, time::Duration};
 use tonic::{Request, Response, Status};
 
@@ -8,17 +8,17 @@ use tonic::{Request, Response, Status};
 pub struct KvsBasicServer {
     store: MultiStore,
     addr: SocketAddr,
-    ts_oracle: TimestampOracle,
+    ts_dump: TimestampDump,
 }
 
 impl KvsBasicServer {
     /// Construct a new Kvs Server from given engine at specific path.
     /// Use `run()` to listen on given addr.
-    pub fn new(store: MultiStore, addr: SocketAddr, ts_oracle: TimestampOracle) -> Result<Self> {
+    pub fn new(store: MultiStore, addr: SocketAddr, ts_dump: TimestampDump) -> Result<Self> {
         Ok(KvsBasicServer {
             store,
             addr,
-            ts_oracle,
+            ts_dump,
         })
     }
     pub fn start(self) -> Result<()> {
@@ -78,7 +78,7 @@ impl KvRpc for KvsBasicServer {
         request: Request<TimeStampRequest>,
     ) -> std::result::Result<Response<TimeStampReply>, Status> {
         let name = request.into_inner().name;
-        let ts = self.ts_oracle.fetch_one().unwrap();
+        let ts = self.ts_dump.fetch_one().unwrap();
         let reply = TimeStampReply { name, ts };
         Ok(tonic::Response::new(reply))
     }
