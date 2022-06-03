@@ -6,7 +6,7 @@ pub mod kvs_service {
     pub use include::kv_rpc_server::{KvRpc, KvRpcServer};
     pub use include::{
         CommitReply, CommitRequest, GetReply, GetRequest, PrewriteReply, PrewriteRequest, Snapshot,
-        TsReply, TsRequest, WriteOp,
+        TimeStampReply, TimeStampRequest, WriteOp,
     };
 }
 

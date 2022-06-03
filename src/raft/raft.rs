@@ -316,7 +316,7 @@ impl RaftCore {
             self.persist();
             Ok((index, term))
         } else {
-            Err(KvError::NotLeader)
+            Err(KvError::RaftErrorNotLeader)
         }
     }
     fn start_read_only(&mut self, command: &[u8]) -> Result<(u64, u64)> {
@@ -332,7 +332,7 @@ impl RaftCore {
                 ))
             }
         } else {
-            Err(KvError::NotLeader)
+            Err(KvError::RaftErrorNotLeader)
         }
     }
 
@@ -1127,7 +1127,7 @@ impl RaftNode {
             response
         } else {
             debug!("RaftNode {} -- Start a Command but in Not Leader", self.me);
-            Err(KvError::NotLeader)
+            Err(KvError::RaftErrorNotLeader)
         }
     }
 
@@ -1161,7 +1161,7 @@ impl RaftNode {
             response
         } else {
             debug!("RaftNode {} -- Start a ReadOnly but in Not Leader", self.me);
-            Err(KvError::NotLeader)
+            Err(KvError::RaftErrorNotLeader)
         }
     }
 

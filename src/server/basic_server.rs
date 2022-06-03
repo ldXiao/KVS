@@ -75,11 +75,11 @@ impl KvsBasicServer {
 impl KvRpc for KvsBasicServer {
     async fn get_timestamp(
         &self,
-        request: Request<TsRequest>,
-    ) -> std::result::Result<Response<TsReply>, Status> {
+        request: Request<TimeStampRequest>,
+    ) -> std::result::Result<Response<TimeStampReply>, Status> {
         let name = request.into_inner().name;
         let ts = self.ts_oracle.fetch_one().unwrap();
-        let reply = TsReply { name, ts };
+        let reply = TimeStampReply { name, ts };
         Ok(tonic::Response::new(reply))
     }
 

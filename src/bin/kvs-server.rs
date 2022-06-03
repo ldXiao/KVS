@@ -31,7 +31,7 @@ struct Opt {
         short = "e",
         long = "engine",
         default_value = "auto",
-        parse(try_from_str = parse_str_to_engine)
+        parse(try_from_str = parse_engine)
     )]
     engine: String,
     #[structopt(
@@ -43,14 +43,14 @@ struct Opt {
     addrs: Vec<SocketAddr>,
 }
 
-fn parse_str_to_engine(src: &str) -> Result<String> {
+fn parse_engine(src: &str) -> Result<String> {
     let previous = fs::read_to_string(ENGINE_TAG_FILE);
     if src == "auto" {
         Ok(previous.unwrap_or("kvs".to_string()))
     } else if previous.is_err() || src == previous.unwrap() {
         Ok(src.to_string())
     } else {
-        Err(KvError::ParserError(src.to_string()))
+        Err(KvError::CommandLineError(src.to_string()))
     }
 }
 

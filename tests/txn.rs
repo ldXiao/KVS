@@ -401,8 +401,8 @@ impl Proxy {
 impl KvRpc for Proxy {
     async fn get_timestamp(
         &self,
-        request: tonic::Request<TsRequest>,
-    ) -> std::result::Result<tonic::Response<TsReply>, tonic::Status> {
+        request: tonic::Request<TimeStampRequest>,
+    ) -> std::result::Result<tonic::Response<TimeStampReply>, tonic::Status> {
         self.build_client().get_timestamp(request).await
     }
 

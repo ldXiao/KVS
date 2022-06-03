@@ -34,15 +34,6 @@ impl KvsClient {
     }
 }
 
-// impl KvsClient {
-//     fn retry_rpc<M, N, F>(&self, rpc_call: F)
-//     where
-//         M: Message,
-//         F: FnOnce(&mut M) -> impl Future<Output = Result<Response<N>, Status>>,
-//     {
-//     }
-// }
-
 impl KvsClient {
     /// determined whether txn is started or not
     pub fn txn_is_started(&self) -> bool {
@@ -50,7 +41,7 @@ impl KvsClient {
     }
     /// Send a request to server and get the max seq number of this client's name
     pub async fn get_timestamp(&mut self) -> Result<u64> {
-        let req = TsRequest {
+        let req = TimeStampRequest {
             name: self.name.clone(),
         };
         for _retries in 0..self.retries {

@@ -20,13 +20,13 @@ pub enum KvError {
     Rpc(#[from] tonic::Status),
     /// Unknown Engine
     #[error("Unknown Engine: {0}")]
-    ParserError(String),
+    CommandLineError(String),
     /// Unknown Engine
     #[error("{0}")]
     StringError(String),
     /// Unknown Error
     #[error("Not Leader")]
-    NotLeader,
+    RaftErrorNotLeader,
     /// Unknown Error
     #[error("Unknown Error")]
     Unknown,
@@ -42,9 +42,9 @@ impl From<KvError> for Status {
             KvError::Io(e) => Status::internal(e.to_string()),
             KvError::Serde(e) => Status::internal(e.to_string()),
             KvError::Rpc(e) => e,
-            KvError::ParserError(e) => Status::internal(e.to_string()),
+            KvError::CommandLineError(e) => Status::internal(e.to_string()),
             KvError::StringError(e) => Status::internal(e.to_string()),
-            KvError::NotLeader => Status::permission_denied("Not Leader"),
+            KvError::RaftErrorNotLeader => Status::permission_denied("Not Leader"),
             KvError::Unknown => Status::unknown("Unknown Error"),
         }
     }

@@ -3,15 +3,15 @@ syntax = "proto3";
 package kvs;
 
 service KvRpc {
-  rpc get_timestamp(TsRequest) returns (TsReply) {}
+  rpc get_timestamp(TimeStampRequest) returns (TimeStampReply) {}
   rpc txn_get(GetRequest) returns (GetReply) {}
   rpc txn_prewrite(PrewriteRequest) returns (PrewriteReply) {}
   rpc txn_commit(CommitRequest) returns (CommitReply) {}
 }
 
-message TsRequest { string name = 1; }
+message TimeStampRequest { string name = 1; }
 
-message TsReply {
+message TimeStampReply {
   string name = 1;
   uint64 ts = 2;
 }
