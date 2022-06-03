@@ -37,12 +37,13 @@ For now we can simulate distributed system with multiple process on a single nod
 ```sh
 ./kvs-server
 ```
-Run a raft server on multiple
+Run a single raft node with multiple know peer raft nodes
 ```sh
 ./kvs-server -e sled -s raft -i 0 -a "127.0.0.1:5000" "127.0.0.1:5001" "127.0.0.1:5002" "127.0.0.1:5003" "127.0.0.1:5004"
 ```
+where `-i <num>` is the index into the list of addresses.
 ```sh
-./kvs-server -e -s raft -a 
+./kvs-server -e -s raft -a
 -a "127.0.0.1:5000" "127.0.0.1:5001" "127.0.0.1:5002" "127.0.0.1:5003" "127.0.0.1:5004"
 ```
 
