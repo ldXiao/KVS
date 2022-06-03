@@ -17,7 +17,7 @@ mod rpc;
 mod server;
 
 /// Thread Pool
-pub mod thread_pool;
+// pub mod thread_pool;
 
 pub use engine::{EngineKind, KvSled, KvStore, KvsEngine};
 pub use client::{KvsClient, KvsClientBuilder};
