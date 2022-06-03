@@ -275,7 +275,7 @@ impl Default for KvsClientBuilder {
             seq: 0,
             info: Vec::new(),
             retries: 3,
-            timeout: Duration::from_secs(3),
+            timeout: Duration::from_secs(10),
         }
     }
 }
